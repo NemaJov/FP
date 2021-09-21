@@ -1,0 +1,114 @@
+package jn203273m
+
+import jn203273m.UI.{contents, preferredSize, project, title}
+
+import java.awt.Dimension
+import java.awt.event.ItemEvent
+import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.ImageIO
+import scala.swing.{BoxPanel, Button, CheckBox, Color, Dialog, Graphics2D, Label, MainFrame, Orientation, Panel, Point, TextField}
+
+class ImagePanel extends Panel
+{
+  var combined: BufferedImage = null
+  def refresh()={
+    println("Refreshing")
+    combined = new BufferedImage(1000,1000,BufferedImage.TYPE_INT_ARGB)
+    val g = combined.createGraphics()
+    /*
+    for(i <- Range(0, bufferedImage.getWidth()); j<- Range(0, bufferedImage.getHeight())){
+      var rgb: Int = bufferedImage.getRGB(i,j)
+      //println(rgb)
+      var c = new Color(rgb)
+      //println(c.getAlpha)
+      //println(((255-c.getRed)<<16)+((255-c.getGreen)<<8)+(255-c.getBlue))
+      //println(10<<24+((255-c.getRed)<<16)+((255-c.getGreen)<<8)+(255-c.getBlue))
+      bufferedImage.setRGB(i,j,c.getRGB-(150<<24))
+    }
+     */
+    project.getLayers().foreach(layer=>{
+      if(layer.active) g.drawImage(layer.bufferedImage,0,0,null)
+    })
+    paintComponent(g)
+  }
+
+
+  override def paintComponent(g:Graphics2D) =
+  {
+    if (null != combined) g.drawImage(combined, 0, 0, null)
+  }
+}
+
+object UI extends MainFrame {
+  title = "FP projekat"
+  preferredSize = new Dimension(800, 600)
+  val imagePanel = new ImagePanel()
+  contents = new BoxPanel(Orientation.Vertical){
+    contents += imagePanel
+    contents += new BoxPanel(Orientation.Horizontal){
+      contents += Button("Layers")(openLayersDialog())
+      contents += Button("Other")(println("Selections"))
+    }
+  }
+
+  var project = new Project("Prvi")
+
+  def openLayersDialog() = {
+    val dialog = new Dialog(UI.super.owner)
+    refreshLayersDialog(dialog)
+  }
+
+  def refreshLayersDialog(dialog: Dialog): Unit = {
+    dialog.title = "Layers"
+    dialog.location = new Point(600,300)
+    dialog.size = new Dimension(600,500)
+    dialog.contents = new BoxPanel(Orientation.Vertical) {
+      contents+=new BoxPanel(Orientation.Horizontal){
+        contents+=new Label("Name")
+        contents+=new Label("Active")
+        contents+=new Label("Opacity")
+      }
+      project.getLayers().foreach((layer)=>{
+        contents+=new BoxPanel(Orientation.Horizontal){
+          contents+=new Label(layer.name)
+          contents+=new CheckBox(){
+            selected = layer.active
+            name = layer.name+"Checkbox"
+            listenTo(this)
+            //layer.setActive(this.selected)
+          }
+          contents+=new TextField(){
+            text = layer.opacity.toString
+            maximumSize = new Dimension(300,30)
+          }
+        }
+      })
+      contents+=new BoxPanel(Orientation.Horizontal){
+        contents+=new Label("Name")
+        val newLayerName = new TextField()
+        newLayerName.maximumSize = new Dimension(300,30)
+        contents+= newLayerName
+        contents+=new Label("Image path")
+        val newLayerImagePath = new TextField()
+        newLayerImagePath.maximumSize = new Dimension(300,30)
+        contents+= newLayerImagePath
+        contents+= Button("New layer"){
+          val newLayer = new Layer(newLayerName.text,newLayerImagePath.text)
+          project.addLayer(newLayer)
+          refreshLayersDialog(dialog)
+          imagePanel.refresh()
+        }
+      }
+    }
+    reactions+={
+      case scala.swing.event.WindowClosed(dialog: Dialog) => imagePanel.refresh()
+    }
+    dialog.visible = true
+  }
+
+  def openOtherDialog() = {
+    println("Nesto drugo")
+  }
+
+}
